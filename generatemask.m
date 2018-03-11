@@ -7,11 +7,14 @@
 %     last_mask: mask in last cycle.
 % Returns:
 %     mask: a mask with the same size of the input image, where 0 indicates opaque and 255 indicates transparent.
-function mask = generatemask(image, method, threshold_on, threshold_off, last_mask)
+function mask = generatemask(image, method, threshold_on, extra_arg1, extra_arg2)
     if strcmp(method, 'threshold')
         mask = uint8(rgb2gray(image) < threshold_on) * 255;
     end
     if strcmp(method, 'threshold_on_off')
+        threshold_off = extra_arg1;
+        last_mask = extra_arg2;
+        
         gray = rgb2gray(image);
         mask = zeros(size(gray));
         for i = 1:size(image, 1)
@@ -30,17 +33,27 @@ function mask = generatemask(image, method, threshold_on, threshold_off, last_ma
             end
         end
     end
-    
-%     % Try to solve shrinking problem with image dilatation.
-%     mask = imgaussfilt(mask, 2);
-%     imwrite(mask, ['results/', num2str(index), '_mask_ori.png'])
-%     mask = 255 - imdilate(255 - mask, strel('ball', 3, 3));
-
-%     % Try to solve shrinking problem with image crop.
-%     imwrite(mask, ['results/', num2str(index), '_mask_ori.png'])
-%     new_mask = imresize(mask, 1.1);
-%     new_mask = imcrop(new_mask, [(size(new_mask, 2) - size(mask, 2)) / 2, ...
-%                                  (size(new_mask, 1) - size(mask, 1)) / 2, ...
-%                                  size(mask, 2) - 1, size(mask, 1) - 1]);
-%     mask = new_mask;
+    if strcmp(method, 'grayscale')
+        gray = uint8(rgb2gray(image));
+        mask = 255 - gray;
+        imwrite(mask, 'results/mask_ori.png');
+        mask = imadjust(mask, [0.2, 0.8]);
+    end
+    if strcmp(method, 'threshold_inverse')
+        transmission = extra_arg1;
+        last_mask = extra_arg2;
+        % Inverse
+        original_image = image;
+        for c = 1:3
+            channel = original_image(:, :, c);
+            channel(last_mask > 128) = channel(last_mask > 128) / transmission(c);
+            original_image(:, :, c) = channel;
+        end
+        mask = generatemask(image, 'threshold', threshold_on);
+    end
+    if strcmp(method, 'threshold') || strcmp(method, 'threshold_on_off')  
+        % Try to solve shrinking problem with gaussian blur.
+        mask = uint8(imgaussfilt(mask, 2));
+        mask = (mask > 200) * 255;
+    end
 end

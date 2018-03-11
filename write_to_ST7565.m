@@ -3,12 +3,17 @@
 %     image: a single channel image.
 % Returns:
 %     bytes: data ready for input buffer of ST7565 LCD.
-function bytes = write_to_ST7565(image, lcd)    
-    % Solve a mysterious bug when pasued time is between 0.3s and 1.0s.
-    image = circshift(image, [0, 64]);
-    temp = image(:, 65:128);
-    temp = circshift(temp, [8, 0]);
-    image(:, 65:128) = temp;
+function bytes = write_to_ST7565(image, lcd, bug)    
+    if nargin < 3
+        bug = true;
+    end
+    if bug
+        % Solve a mysterious bug when pasued time is between 0.3s and 1.0s.
+        image = circshift(image, [0, 64]);
+        temp = image(:, 65:128);
+        temp = circshift(temp, [8, 0]);
+        image(:, 65:128) = temp;
+    end
 
     image = flipud(image);
     image = image < 128; % Binarization.
